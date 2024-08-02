@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
-    const apiKey = '832b4efb-9873-4a2a-8310-cf556059c6e9';
+    const apiKey = 'bde1a888-3d03-461f-81f5-fcea9a98d051';
     const matchesApiUrl = `https://api.cricapi.com/v1/currentMatches?apikey=${apiKey}&offset=0`;
 
     async function fetchMatches() {
