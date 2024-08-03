@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cricket Series</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .modal {
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-content {
+            background: #ffffff;
+            color: #000000;
+            padding: 2rem;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 800px;
+            overflow-y: auto;
+        }
+        .modal-content h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        .modal-content p {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body class="gradient-bg min-h-screen flex flex-col items-center">
+    <div class="container mx-auto p-4">
+        <h1 class="text-5xl font-bold text-white text-center mb-8">Cricket Series</h1>
+        <div id="series" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <!-- Series details will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <!-- Series Details Modal -->
+    <div id="series-modal" class="modal">
+        <div class="modal-content">
+            <button id="close-series-modal" class="bg-red-500 text-white px-4 py-2 rounded-md float-right">Close</button>
+            <div id="series-info">
+                <!-- Detailed series info will be dynamically inserted here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const apiKey = '832b4efb-9873-4a2a-8310-cf556059c6e9';
+
+            async function fetchSeries() {
+                try {
+                    const response = await fetch(`https://api.cricapi.com/v1/series?apikey=${apiKey}&offset=0`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    displaySeries(data.data);
+                } catch (error) {
+                    console.error('Error fetching series data:', error);
+                    alert('Unable to fetch series data. Please try again later.');
+                }
+            }
+
+            async function fetchSeriesInfo(seriesId) {
+                try {
+                    const response = await fetch(`https://api.cricapi.com/v1/series_info?id=${seriesId}&apikey=${apiKey}`);
+                    if (!response.ok) throw new Error('Network response was not ok');
+                    const data = await response.json();
+                    displaySeriesInfo(data.data);
+                } catch (error) {
+                    console.error('Error fetching series info:', error);
+                    alert('Unable to fetch series info. Please try again later.');
+                }
+            }
+
+            function displaySeries(series) {
+                if (!series) {
+                    console.error('No series data to display.');
+                    return;
+                }
+
+                const seriesContainer = document.getElementById('series');
+                seriesContainer.innerHTML = '';
+
+                series.forEach(serie => {
+                    const seriesElement = document.createElement('div');
+                    seriesElement.className = 'bg-white p-6 rounded-lg shadow-lg transition transform duration-300 card-hover cursor-pointer';
+                    seriesElement.setAttribute('data-series-id', serie.id);
+
+                    seriesElement.innerHTML = `
+                        <h3 class="text-2xl font-semibold mb-2">${serie.name || 'No Name'}</h3>
+                        <p class="text-lg mb-1">Start: ${serie.startDate ? new Date(serie.startDate).toLocaleDateString() : 'No Date'}</p>
+                        <p class="text-lg mb-1">End: ${serie.endDate ? new Date(serie.endDate).toLocaleDateString() : 'No Date'}</p>
+                    `;
+
+                    seriesElement.addEventListener('click', () => {
+                        const seriesId = serie.id;
+                        if (seriesId) {
+                            fetchSeriesInfo(seriesId);
+                            document.getElementById('series-modal').classList.add('active');
+                        }
+                    });
+
+                    seriesContainer.appendChild(seriesElement);
+                });
+            }
+
+            function displaySeriesInfo(seriesInfo) {
+                const seriesInfoContainer = document.getElementById('series-info');
+                seriesInfoContainer.innerHTML = `
+                    <h3 class="text-3xl font-bold mb-4">${seriesInfo.name || 'No Name'}</h3>
+                    <p class="text-xl mb-2">Start Date: ${seriesInfo.startDate ? new Date(seriesInfo.startDate).toLocaleDateString() : 'No Date'}</p>
+                    <p class="text-xl mb-2">End Date: ${seriesInfo.endDate ? new Date(seriesInfo.endDate).toLocaleDateString() : 'No Date'}</p>
+                    <p class="text-lg mt-4">${seriesInfo.seriesDetails || 'No Details'}</p>
+                `;
+            }
+
+            document.getElementById('close-series-modal').addEventListener('click', () => {
+                document.getElementById('series-modal').classList.remove('active');
+            });
+
+            fetchSeries();
+        });
+    </script>
+</body>
+</html>
