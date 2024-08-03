@@ -2,57 +2,188 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FanCode Live Streaming</title>
-    <script src="https://content.jwplatform.com/libraries/KB5zFt7A.js"></script>
+    <title>Stream Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: #f3f7fc;
-            margin: 0;
-            background-image: url('bg.jpg');
-            padding: 0;
+            transition: background-color 5s ease;
+        }
+
+        .custom-controls {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
         }
 
-        #video-container {
-            position: relative;
-            width: 80%;
-            max-width: 800px;
-            margin: 0 auto;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+        .custom-button, .toggle-button {
+            background: rgba(0, 0, 0, 0.5);
+            border: none;
+            color: white;
+            padding: 10px;
+            margin: 0 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
         }
 
-        #video {
-            width: 100%;
-            height: 100%;
+        .custom-button:hover, .toggle-button:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+
+        .custom-button:focus, .toggle-button:focus {
+            outline: none;
+        }
+
+        .stream-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px;
+            border-radius: 5px;
+        }
+
+        .stream-info h2 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        .hidden {
+            display: none;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
-<body>
-    <div id="video-container">
-        <div id="video"></div>
+<body class="bg-black flex items-center justify-center min-h-screen relative">
+
+    <div class="absolute inset-0 flex items-center justify-center">
+        <div class="relative w-full max-w-4xl aspect-w-16 aspect-h-9">
+            <video id="video" class="w-full h-full" controls crossorigin="anonymous"></video>
+            <div class="custom-controls" id="controls">
+                <button id="playPause" class="custom-button">Play</button>
+                <button id="muteToggle" class="custom-button">Mute</button>
+                <button id="fullScreen" class="custom-button">Fullscreen</button>
+                <button id="toggleBackground" class="toggle-button">Enable Dynamic Background</button>
+            </div>
+            <div class="stream-info" id="streamInfo">
+                <h2>Stream Title</h2>
+                <p>Now playing...</p>
+            </div>
+        </div>
     </div>
 
-    <script type="text/javascript">
-        // Parse the query string to extract the stream link
-        const queryString = window.location.search;
-        const urlParams = new URLSearchParams(queryString);
-        const streamLink = urlParams.get('streamLink');
+    <canvas id="colorCanvas" class="hidden"></canvas>
 
-        // Setup JWPlayer with the stream link
-        jwplayer("video").setup({
-            width: "100%",
-            height: "100%",
-            autostart: true,
-            mute: false,
-            file: streamLink // Set the stream link
+    <script>
+        function getParameterByName(name, url = window.location.href) {
+            name = name.replace(/[\[\]]/g, '\\$&');
+            var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+                results = regex.exec(url);
+            if (!results) return null;
+            if (!results[2]) return '';
+            return decodeURIComponent(results[2].replace(/\+/g, ' '));
+        }
+
+        const video = document.getElementById('video');
+        const streamUrl = getParameterByName('url');
+
+        if (Hls.isSupported()) {
+            var hls = new Hls();
+            hls.loadSource(streamUrl);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                video.play();
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.addEventListener('loadedmetadata', function() {
+                video.play();
+            });
+        }
+
+        // Custom Controls
+        const playPauseBtn = document.getElementById('playPause');
+        const muteToggleBtn = document.getElementById('muteToggle');
+        const fullScreenBtn = document.getElementById('fullScreen');
+        const toggleBackgroundBtn = document.getElementById('toggleBackground');
+        let isDynamicBackgroundEnabled = false;
+
+        playPauseBtn.addEventListener('click', () => {
+            if (video.paused) {
+                video.play();
+                playPauseBtn.textContent = 'Pause';
+            } else {
+                video.pause();
+                playPauseBtn.textContent = 'Play';
+            }
         });
+
+        muteToggleBtn.addEventListener('click', () => {
+            video.muted = !video.muted;
+            muteToggleBtn.textContent = video.muted ? 'Unmute' : 'Mute';
+        });
+
+        fullScreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                video.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        });
+
+        // Dynamic Background Color
+        const colorCanvas = document.getElementById('colorCanvas');
+        const ctx = colorCanvas.getContext('2d');
+
+        toggleBackgroundBtn.addEventListener('click', () => {
+            isDynamicBackgroundEnabled = !isDynamicBackgroundEnabled;
+            toggleBackgroundBtn.textContent = isDynamicBackgroundEnabled
+                ? 'Disable Dynamic Background'
+                : 'Enable Dynamic Background';
+            if (!isDynamicBackgroundEnabled) {
+                document.body.style.backgroundColor = 'black';
+            }
+        });
+
+        video.addEventListener('play', () => {
+            setInterval(() => {
+                if (isDynamicBackgroundEnabled && !video.paused && !video.ended) {
+                    ctx.drawImage(video, 0, 0, colorCanvas.width, colorCanvas.height);
+                    const frame = ctx.getImageData(0, 0, colorCanvas.width, colorCanvas.height);
+                    const length = frame.data.length;
+                    let r = 0, g = 0, b = 0, count = 0;
+
+                    for (let i = 0; i < length; i += 4) {
+                        r += frame.data[i];
+                        g += frame.data[i + 1];
+                        b += frame.data[i + 2];
+                        count++;
+                    }
+
+                    r = Math.floor(r / count);
+                    g = Math.floor(g / count);
+                    b = Math.floor(b / count);
+
+                    document.body.style.backgroundColor = `rgb(${r},${g},${b})`;
+                }
+            }, 1000);
+        });
+
+        // Set canvas dimensions to match video aspect ratio
+        video.addEventListener('loadedmetadata', () => {
+            colorCanvas.width = 100;
+            colorCanvas.height = video.videoHeight / (video.videoWidth / colorCanvas.width);
+        });
+
+        // Stream Information (Optional, can be updated dynamically)
+        document.getElementById('streamInfo').style.display = streamUrl ? 'block' : 'none';
     </script>
 </body>
 </html>
