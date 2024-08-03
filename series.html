@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cricket Series</title>
+    <title>Cricket Series List</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
     <style>
         .gradient-bg {
@@ -32,51 +32,79 @@
             opacity: 1;
             pointer-events: auto;
         }
-        .modal-content {
-            background: #ffffff;
-            color: #000000;
-            padding: 2rem;
-            border-radius: 0.5rem;
-            width: 90%;
-            max-width: 800px;
-            overflow-y: auto;
+        .header-button {
+            background-color: #ff5722;
+            color: #ffffff;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-size: 1.25rem;
+            text-align: center;
+            display: inline-block;
+            transition: background-color 0.3s ease;
         }
-        .modal-content h3 {
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        .modal-content p {
-            margin-bottom: 0.5rem;
+        .header-button:hover {
+            background-color: #e64a19;
         }
     </style>
 </head>
 <body class="gradient-bg min-h-screen flex flex-col items-center">
     <div class="container mx-auto p-4">
-        <h1 class="text-5xl font-bold text-white text-center mb-8">Cricket Series</h1>
-        <div id="series" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-5xl font-bold text-white">Cricket Series List</h1>
+            <a href="index.html" class="header-button">Back to Current Matches</a>
+        </div>
+        <div id="series-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
             <!-- Series details will be dynamically inserted here -->
         </div>
-    </div>
-
-    <!-- Series Details Modal -->
-    <div id="series-modal" class="modal">
-        <div class="modal-content">
-            <button id="close-series-modal" class="bg-red-500 text-white px-4 py-2 rounded-md float-right">Close</button>
-            <div id="series-info">
-                <!-- Detailed series info will be dynamically inserted here -->
+        
+        <!-- Series Details Modal -->
+        <div id="series-modal" class="modal">
+            <div class="bg-white p-6 rounded-lg shadow-lg max-w-2xl w-full">
+                <button id="close-series-modal" class="bg-red-500 text-white px-4 py-2 rounded-md float-right">Close</button>
+                <div id="series-info">
+                    <!-- Detailed series info will be dynamically inserted here -->
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         document.addEventListener("DOMContentLoaded", () => {
-            const apiKey = '832b4efb-9873-4a2a-8310-cf556059c6e9';
+            const apiKeys = [
+                '458882e4-17ac-4688-9b71-8ffce9137ff5',
+                'a',
+                'another-api-key-3',
+                'another-api-key-4',
+                'another-api-key-5',
+                'another-api-key-6',
+                'another-api-key-7',
+                'another-api-key-8',
+                'another-api-key-9',
+                'another-api-key-10'
+            ];
+            let currentKeyIndex = 0;
+            const seriesApiKey = '458882e4-17ac-4688-9b71-8ffce9137ff5';
+
+            async function fetchWithRetry(url) {
+                while (currentKeyIndex < apiKeys.length) {
+                    try {
+                        const response = await fetch(`${url}&apikey=${apiKeys[currentKeyIndex]}`);
+                        if (response.ok) {
+                            return await response.json();
+                        } else {
+                            throw new Error(`API key ${currentKeyIndex + 1} failed: ${response.statusText}`);
+                        }
+                    } catch (error) {
+                        console.error(error.message);
+                        currentKeyIndex++;
+                    }
+                }
+                throw new Error('All API keys have been exhausted.');
+            }
 
             async function fetchSeries() {
                 try {
-                    const response = await fetch(`https://api.cricapi.com/v1/series?apikey=${apiKey}&offset=0`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
+                    const data = await fetchWithRetry(`https://api.cricapi.com/v1/series?apikey=${seriesApiKey}&offset=0`);
                     displaySeries(data.data);
                 } catch (error) {
                     console.error('Error fetching series data:', error);
@@ -86,9 +114,7 @@
 
             async function fetchSeriesInfo(seriesId) {
                 try {
-                    const response = await fetch(`https://api.cricapi.com/v1/series_info?id=${seriesId}&apikey=${apiKey}`);
-                    if (!response.ok) throw new Error('Network response was not ok');
-                    const data = await response.json();
+                    const data = await fetchWithRetry(`https://api.cricapi.com/v1/series_info?id=${seriesId}&apikey=${seriesApiKey}`);
                     displaySeriesInfo(data.data);
                 } catch (error) {
                     console.error('Error fetching series info:', error);
@@ -97,31 +123,24 @@
             }
 
             function displaySeries(series) {
-                if (!series) {
-                    console.error('No series data to display.');
-                    return;
-                }
-
-                const seriesContainer = document.getElementById('series');
+                const seriesContainer = document.getElementById('series-list');
                 seriesContainer.innerHTML = '';
 
-                series.forEach(serie => {
+                series.forEach(seriesItem => {
                     const seriesElement = document.createElement('div');
                     seriesElement.className = 'bg-white p-6 rounded-lg shadow-lg transition transform duration-300 card-hover cursor-pointer';
-                    seriesElement.setAttribute('data-series-id', serie.id);
+                    seriesElement.setAttribute('data-series-id', seriesItem.id);
 
                     seriesElement.innerHTML = `
-                        <h3 class="text-2xl font-semibold mb-2">${serie.name || 'No Name'}</h3>
-                        <p class="text-lg mb-1">Start: ${serie.startDate ? new Date(serie.startDate).toLocaleDateString() : 'No Date'}</p>
-                        <p class="text-lg mb-1">End: ${serie.endDate ? new Date(serie.endDate).toLocaleDateString() : 'No Date'}</p>
+                        <h2 class="text-2xl font-bold mb-2">${seriesItem.name}</h2>
+                        <p class="text-lg mb-1">Start Date: ${new Date(seriesItem.startDate).toLocaleDateString()}</p>
+                        <p class="text-lg mb-1">End Date: ${new Date(seriesItem.endDate).toLocaleDateString()}</p>
+                        <p class="text-lg mb-1">Status: ${seriesItem.status}</p>
                     `;
 
                     seriesElement.addEventListener('click', () => {
-                        const seriesId = serie.id;
-                        if (seriesId) {
-                            fetchSeriesInfo(seriesId);
-                            document.getElementById('series-modal').classList.add('active');
-                        }
+                        fetchSeriesInfo(seriesItem.id);
+                        document.getElementById('series-modal').classList.add('active');
                     });
 
                     seriesContainer.appendChild(seriesElement);
@@ -131,10 +150,11 @@
             function displaySeriesInfo(seriesInfo) {
                 const seriesInfoContainer = document.getElementById('series-info');
                 seriesInfoContainer.innerHTML = `
-                    <h3 class="text-3xl font-bold mb-4">${seriesInfo.name || 'No Name'}</h3>
-                    <p class="text-xl mb-2">Start Date: ${seriesInfo.startDate ? new Date(seriesInfo.startDate).toLocaleDateString() : 'No Date'}</p>
-                    <p class="text-xl mb-2">End Date: ${seriesInfo.endDate ? new Date(seriesInfo.endDate).toLocaleDateString() : 'No Date'}</p>
-                    <p class="text-lg mt-4">${seriesInfo.seriesDetails || 'No Details'}</p>
+                    <h2 class="text-3xl font-bold mb-4">${seriesInfo.name}</h2>
+                    <p class="text-xl mb-2">Start Date: ${new Date(seriesInfo.startDate).toLocaleDateString()}</p>
+                    <p class="text-xl mb-2">End Date: ${new Date(seriesInfo.endDate).toLocaleDateString()}</p>
+                    <p class="text-xl mb-2">Status: ${seriesInfo.status}</p>
+                    <p class="text-lg mt-4">${seriesInfo.details}</p>
                 `;
             }
 
